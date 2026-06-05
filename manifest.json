@@ -1,103 +1,71 @@
 {
   "manifest_version": "0.3",
-  "name": "bonda-ga4-mcp",
-  "display_name": "Bonda Google Analytics 4",
+  "name": "ga4-mcp",
+  "display_name": "Google Analytics 4 (Official)",
   "version": "1.0.0",
-  "description": "Acceso a datos de Google Analytics 4 (GA4) de Bonda desde Claude, con soporte multi-property y dimensiones custom (tenant, item_name, hostname).",
-  "long_description": "Servidor MCP que conecta las properties de Google Analytics 4 de Bonda a Claude. Permite consultar usuarios activos, vistas de página, eventos de negocio (canjes de cupones/vouchers) y reportes personalizados en lenguaje natural, con dimensiones custom de Bonda (tenant, user_segmentation, item_name) y notas de arquitectura para cruzar datos con Metabase. Autenticación vía Service Account de Google (solo lectura).",
+  "description": "Connect your Google Analytics 4 data to Claude. Packages the official Google Analytics MCP server (read-only). REQUIRES Python 3.10+ and pipx installed on your machine — see the repo README for setup.",
+  "long_description": "This is a Claude Desktop extension that runs the official Google Analytics MCP server (github.com/googleanalytics/google-analytics-mcp, PyPI package 'analytics-mcp'), maintained by the Google Analytics team. It gives Claude read-only access to your GA4 accounts and properties via the Analytics Admin & Data APIs: account/property discovery, core reports, funnel reports, realtime reports, and custom dimensions/metrics.\n\nPREREQUISITES (the extension cannot bundle these): (1) Python 3.10 or newer, (2) pipx on your PATH, (3) the Google Analytics Admin API and Data API enabled in a Google Cloud project, and (4) credentials with the analytics.readonly scope — either a Service Account JSON key (simplest) or user credentials from `gcloud auth application-default login`. Fill in the path to that credentials file and your Google Cloud Project ID below. Full step-by-step setup is in the README: https://github.com/Leanpicazoo/ga4-mcp",
   "author": {
-    "name": "Bonda",
-    "url": "https://bonda.com"
+    "name": "Leanpicazoo",
+    "url": "https://github.com/Leanpicazoo"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bonda/bonda-ga4-mcp"
+    "url": "https://github.com/Leanpicazoo/ga4-mcp"
   },
+  "homepage": "https://github.com/Leanpicazoo/ga4-mcp",
+  "documentation": "https://github.com/Leanpicazoo/ga4-mcp#readme",
   "icon": "icon.png",
   "server": {
-    "type": "node",
-    "entry_point": "build/src/index.js",
+    "type": "python",
+    "entry_point": "server/main.py",
     "mcp_config": {
-      "command": "node",
-      "args": [
-        "${__dirname}/build/src/index.js"
-      ],
+      "command": "pipx",
+      "args": ["run", "analytics-mcp"],
       "env": {
-        "GA4_PROPERTY_ID": "${user_config.ga4_property_id}",
         "GOOGLE_APPLICATION_CREDENTIALS": "${user_config.google_credentials_file}",
-        "GA4_CLIENT_EMAIL": "${user_config.ga4_client_email}",
-        "GA4_PRIVATE_KEY": "${user_config.ga4_private_key}"
+        "GOOGLE_PROJECT_ID": "${user_config.google_project_id}"
       }
     }
   },
   "tools": [
-    {
-      "name": "get_active_users",
-      "description": "Usuarios activos, nuevos y totales en un rango de fechas, con desglose opcional por dimensión."
-    },
-    {
-      "name": "get_page_views",
-      "description": "Vistas de página (screenPageViews) y top de páginas más visitadas en un rango de fechas."
-    },
-    {
-      "name": "run_ga4_report",
-      "description": "Reporte GA4 personalizado: cualquier combinación de métricas, dimensiones, filtros y orden."
-    },
-    {
-      "name": "run_ga4_realtime",
-      "description": "Datos en tiempo real de GA4 (últimos 30 minutos)."
-    },
-    {
-      "name": "get_ga4_metrics_reference",
-      "description": "Referencia de métricas, dimensiones y dimensiones custom de Bonda, con notas de cruce GA4 <-> Metabase."
-    }
+    { "name": "get_account_summaries", "description": "List the user's Google Analytics accounts and properties." },
+    { "name": "get_property_details", "description": "Return details about a specific GA4 property." },
+    { "name": "list_google_ads_links", "description": "List Google Ads account links for a property." },
+    { "name": "run_report", "description": "Run a core GA4 report (Data API): metrics, dimensions, date ranges, filters." },
+    { "name": "run_funnel_report", "description": "Run a GA4 funnel report (Data API)." },
+    { "name": "get_custom_dimensions_and_metrics", "description": "List the custom dimensions and metrics configured for a property." },
+    { "name": "run_realtime_report", "description": "Run a GA4 realtime report (last 30 minutes)." }
   ],
   "keywords": [
     "google-analytics",
     "ga4",
+    "analytics",
     "mcp",
     "model-context-protocol",
-    "ai",
     "claude",
-    "analytics",
-    "bonda"
+    "google"
   ],
   "license": "MIT",
   "user_config": {
-    "ga4_property_id": {
-      "type": "string",
-      "title": "GA4 Property ID (por defecto)",
-      "description": "ID numérico del property GA4 que se usa cuando no se especifica otro. Bonda: 325524662 (PWA Micrositios), 407434664 (admin.bonda.com), 442187277 (copa.futbol), 402547458 (bonda.com).",
-      "required": true,
-      "default": "325524662"
-    },
     "google_credentials_file": {
       "type": "file",
-      "title": "Archivo JSON del Service Account (recomendado)",
-      "description": "Seleccioná el archivo .json de la clave del Service Account de Google con acceso de lectura (Viewer) a la(s) property(ies) de GA4. Es la forma recomendada de autenticar.",
-      "required": false
+      "title": "Credentials file (Service Account JSON or ADC)",
+      "description": "Path to your Google credentials JSON with the analytics.readonly scope. Easiest: a Service Account key file. Alternative: the ADC file created by `gcloud auth application-default login` (printed as 'Credentials saved to file: ...'). The associated identity must have access to your GA4 property.",
+      "required": true
     },
-    "ga4_client_email": {
+    "google_project_id": {
       "type": "string",
-      "title": "Service Account — client_email (alternativa)",
-      "description": "Email del Service Account. Solo es necesario si NO usás el archivo JSON. Ej: bonda-ga4-mcp@proyecto.iam.gserviceaccount.com",
-      "required": false,
-      "default": ""
-    },
-    "ga4_private_key": {
-      "type": "string",
-      "title": "Service Account — private_key (alternativa)",
-      "description": "Clave privada del Service Account (el valor de private_key del JSON, incluyendo -----BEGIN/END PRIVATE KEY-----). Solo necesaria si NO usás el archivo JSON.",
-      "required": false,
-      "sensitive": true,
-      "default": ""
+      "title": "Google Cloud Project ID",
+      "description": "The Project ID where you enabled the Google Analytics Admin API and Data API (e.g. my-project-123456).",
+      "required": true
     }
   },
   "compatibility": {
     "claude_desktop": ">=0.11.0",
     "platforms": ["darwin", "win32", "linux"],
     "runtimes": {
-      "node": ">=18.0.0"
+      "python": ">=3.10.0"
     }
   }
 }

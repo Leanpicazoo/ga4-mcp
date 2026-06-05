@@ -1,12 +1,13 @@
-node_modules/
-build/
+# Build artifacts
 *.mcpb
-*.log
 
-# Credenciales — NUNCA commitear
+# Credentials — NEVER commit
 *.json.key
 service-account*.json
 gcp-*.json
+application_default_credentials.json
 .env
 .env.local
+
+# OS
 .DS_Store

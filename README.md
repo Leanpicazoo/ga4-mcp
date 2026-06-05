@@ -1,120 +1,137 @@
-# Bonda GA4 MCP
+# ga4-mcp — Google Analytics 4 for Claude
 
-Servidor **MCP (Model Context Protocol)** que conecta las properties de **Google Analytics 4** de Bonda a Claude. Se distribuye como **extensión de Claude Desktop** (`.mcpb`): el usuario la habilita y configura desde la UI de extensiones, igual que el conector de Metabase — sin tocar `claude_desktop_config.json` a mano.
+Use your **Google Analytics 4** data from **Claude** in plain language.
 
-Una vez instalada, podés preguntar en lenguaje natural sobre tus datos de GA4 (usuarios, vistas, canjes, eventos) y cruzarlos con Metabase en la misma conversación.
+This repository packages the **official Google Analytics MCP server**
+([`googleanalytics/google-analytics-mcp`](https://github.com/googleanalytics/google-analytics-mcp),
+PyPI [`analytics-mcp`](https://pypi.org/project/analytics-mcp/), maintained by the
+Google Analytics team) as a **Claude Desktop extension** — so anyone can connect
+their own GA4 account, the same way the community packaged Metabase.
 
----
-
-## Autenticación: Service Account (decisión de arquitectura)
-
-La extensión se autentica con un **Service Account de Google con permiso de solo lectura (Viewer)** sobre las properties de GA4. Se eligió sobre OAuth 2.0 porque:
-
-- Es **nativo** al formato de extensiones de Claude Desktop (server stdio + variables de entorno); OAuth obligaría a implementar a mano el flujo, persistir/refrescar tokens y embeber un `client_secret` en el bundle.
-- Bonda ya opera con **una identidad genérica compartida** sobre las mismas properties → un solo Service Account cubre a todo el equipo. **UX:** configurar una vez y listo.
-- **Esfuerzo y mantenimiento** mucho menores.
-
-Soporta dos formas de pasar las credenciales (elegir UNA):
-
-1. **Archivo JSON del Service Account** (recomendado) → campo *Archivo JSON del Service Account*.
-2. **`client_email` + `private_key`** sueltos → campos alternativos.
+It is **read‑only**: it can query your analytics, never modify settings.
 
 ---
 
-## Instalación para usuarios de Bonda (1 clic)
+## ⚠️ Read this first — what you need and how to make it work
 
-1. Descargá `bonda-ga4-mcp.mcpb` desde la sección **Releases** del repo (o el archivo que comparta el admin).
-2. Abrí **Claude Desktop → Settings → Extensions**.
-3. Arrastrá el `.mcpb` a la ventana (o **Install Extension** → seleccionar el archivo).
-4. Completá la configuración:
-   - **GA4 Property ID (por defecto):** `325524662` (PWA Micrositios) u otro.
-   - **Archivo JSON del Service Account:** seleccioná el `.json` que te pasó el admin.
-5. **Enable** y listo. Probá: *"¿Cuántos usuarios activos hubo en los últimos 7 días?"*
+This extension launches a **Python** program, so it **cannot be fully
+self‑contained**. Before it works you must have a few things on your machine.
+It takes about 10 minutes the first time.
 
-> El admin sólo necesita crear el Service Account una vez y darle acceso **Viewer** a las properties (pasos abajo). Luego distribuye el `.json` al equipo.
+### Step 0 — Prerequisites
 
----
-
-## Setup del Service Account (admin, una sola vez)
-
-1. **Google Cloud Console** → crear/elegir proyecto → habilitar **Google Analytics Data API**.
-2. **IAM & Admin → Service Accounts → Create Service Account** (ej: `bonda-ga4-mcp`).
-3. En el Service Account → **Keys → Add Key → Create new key → JSON** → se descarga el `.json`.
-4. **Google Analytics** (analytics.google.com) → **Admin → Property access management** → **+** → agregar el `client_email` del Service Account con rol **Viewer**. Repetir para cada property que se quiera consultar (325524662, 407434664, 442187277, 402547458).
-
----
-
-## Properties de Bonda
-
-| Property ID | Sitio |
+| Requirement | How to install / check |
 |---|---|
-| `325524662` | PWA Micrositios (Cuponstar/Bonda — multi-tenant, default) |
-| `407434664` | admin.bonda.com (backoffice interno) |
-| `442187277` | copa.futbol (prode multi-tenant) |
-| `402547458` | bonda.com / HubSpot (corporativo) |
+| **Python 3.10+** | `python3 --version`. If older: `brew install python` (macOS) or [python.org](https://www.python.org/downloads/). |
+| **pipx** | `pipx --version`. If missing: `brew install pipx && pipx ensurepath` (macOS) or `python3 -m pip install --user pipx && python3 -m pipx ensurepath`. Then **restart your terminal**. |
+
+### Step 1 — Enable the Google APIs
+
+In a [Google Cloud project](https://console.cloud.google.com/), enable both:
+- [Google Analytics Admin API](https://console.cloud.google.com/apis/library/analyticsadmin.googleapis.com)
+- [Google Analytics Data API](https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com)
+
+Note your **Project ID** (e.g. `my-project-123456`) — you'll need it later.
+
+### Step 2 — Get credentials (`analytics.readonly` scope)
+
+Pick **one** option:
+
+**Option A — Service Account (simplest, recommended)**
+1. Google Cloud Console → **IAM & Admin → Service Accounts → Create**.
+2. Open the service account → **Keys → Add key → Create new key → JSON**. A `.json` file downloads — keep its path.
+3. In [Google Analytics](https://analytics.google.com) → **Admin → Property access management** → add the service account's email with the **Viewer** role on the property you want to query.
+
+**Option B — Your own Google login (OAuth via gcloud)**
+```bash
+gcloud auth application-default login \
+  --scopes=https://www.googleapis.com/auth/analytics.readonly,https://www.googleapis.com/auth/cloud-platform
+```
+Copy the path it prints: `Credentials saved to file: [PATH]`.
+
+### Step 3 — Install in Claude Desktop
+
+**Method 1 — One‑click extension (.mcpb)**
+1. Download `ga4-mcp.mcpb` from the [Releases](https://github.com/Leanpicazoo/ga4-mcp/releases) page.
+2. Claude Desktop → **Settings → Extensions** → drag the `.mcpb` in (or **Install Extension**).
+3. Fill the two fields:
+   - **Credentials file** → path to the JSON from Step 2.
+   - **Google Cloud Project ID** → from Step 1.
+4. **Enable**.
+
+> If after enabling Claude reports it can't find `pipx`, your GUI app isn't seeing
+> your shell PATH. Use **Method 2** below (it lets you give the absolute path to pipx).
+
+**Method 2 — Manual config (most reliable)**
+
+Edit `claude_desktop_config.json`
+(macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`,
+Windows: `%APPDATA%\Claude\claude_desktop_config.json`) and add:
+
+```json
+{
+  "mcpServers": {
+    "ga4": {
+      "command": "pipx",
+      "args": ["run", "analytics-mcp"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "/absolute/path/to/credentials.json",
+        "GOOGLE_PROJECT_ID": "your-project-id"
+      }
+    }
+  }
+}
+```
+
+Tip: if `pipx` isn't found, replace `"command": "pipx"` with the absolute path
+from `which pipx` (e.g. `/opt/homebrew/bin/pipx`). Restart Claude Desktop.
+
+### Step 4 — Try it
+
+Restart Claude Desktop and ask, for example:
+- "What can the ga4 server do?"
+- "List my Google Analytics properties."
+- "What were my most popular events in the last 28 days?"
+- "Active users by country in the last 7 days."
 
 ---
 
-## Herramientas (tools)
+## Tools
 
-| Tool | Qué hace |
+| Tool | What it does |
 |---|---|
-| `get_active_users` | Usuarios activos / nuevos / totales en un rango, con desglose opcional. |
-| `get_page_views` | Vistas de página y top de páginas más visitadas. |
-| `run_ga4_report` | Reporte personalizado: cualquier métrica + dimensión + filtro + orden. |
-| `run_ga4_realtime` | Datos en tiempo real (últimos 30 minutos). |
-| `get_ga4_metrics_reference` | Referencia de métricas/dimensiones custom de Bonda + cómo cruzar con Metabase. |
+| `get_account_summaries` | List your GA4 accounts and properties (auto‑discovery). |
+| `get_property_details` | Details about a specific property. |
+| `list_google_ads_links` | Google Ads links for a property. |
+| `run_report` | Core report: metrics, dimensions, date ranges, filters. |
+| `run_funnel_report` | Funnel report. |
+| `get_custom_dimensions_and_metrics` | Custom dimensions/metrics of a property. |
+| `run_realtime_report` | Realtime report (last 30 minutes). |
 
-Todas aceptan `property_id` para apuntar a cualquier property; si se omite, usan el default configurado. Soportan dimensiones custom de Bonda (`customUser:tenant`, `customEvent:item_name`, etc.) y filtros (`dimension_filter`, incluyendo listas y negación para excluir demos por `hostname`).
+(Provided by the upstream official server.)
 
 ---
 
-## Desarrollo
+## Troubleshooting
+
+- **`pipx: command not found`** → pipx isn't installed or not on PATH. Install it (Step 0) and `pipx ensurepath`, or use the absolute path (Method 2).
+- **`Python 3.10+ required`** → upgrade Python (Step 0).
+- **`PERMISSION_DENIED` / no data** → the credential's identity doesn't have access to the property. Add it as **Viewer** in GA4 (Step 2A).
+- **`API has not been used / disabled`** → enable both APIs (Step 1) in the same project as your `GOOGLE_PROJECT_ID`.
+- **First run is slow** → `pipx run` downloads the package the first time, then caches it.
+
+---
+
+## Build the extension yourself
 
 ```bash
-npm install          # instalar dependencias
-npm run build        # compilar TypeScript → build/
-npm run inspector    # depurar con el MCP Inspector
-npm run mcpb:build   # empaquetar la extensión → bonda-ga4-mcp.mcpb
+npx @anthropic-ai/mcpb validate manifest.json
+npx @anthropic-ai/mcpb pack          # produces ga4-mcp.mcpb
 ```
-
-Para correr el server suelto (fuera de Claude Desktop), copiá `.env.example` a `.env`, completá las credenciales y `npm start`.
-
-### Estructura
-
-```
-bonda-ga4-mcp/
-├── manifest.json        # define los campos de la UI (user_config) y el comando del server
-├── icon.png             # ícono de la extensión (reemplazar por el logo de Bonda)
-├── package.json
-├── tsconfig.json
-├── .env.example
-└── src/
-    ├── index.ts         # bootstrap del server MCP (stdio)
-    ├── config.ts        # resolución de credenciales del Service Account
-    ├── ga4.ts           # cliente de la GA4 Data API + tipos
-    ├── filters.ts       # construcción de filtros de dimensión
-    ├── format.ts        # respuestas GA4 → tablas Markdown
-    ├── reference.ts     # métricas/dimensiones/arquitectura de Bonda
-    ├── errors.ts        # manejo uniforme de errores
-    └── tools/           # una tool por archivo + registro central
-```
-
-> **Nota:** `icon.png` es un placeholder 1x1. Reemplazalo por el logo de Bonda (PNG cuadrado, ej. 256×256) antes de publicar.
 
 ---
 
-## Variables de entorno
+## Credits & license
 
-| Variable | Descripción |
-|---|---|
-| `GA4_PROPERTY_ID` | Property por defecto (default `325524662`). |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Ruta al JSON del Service Account (opción recomendada). |
-| `GA4_CLIENT_EMAIL` | `client_email` del Service Account (alternativa). |
-| `GA4_PRIVATE_KEY` | `private_key` del Service Account (alternativa). |
-
-En la extensión de Claude Desktop, estos valores se cargan desde la UI y se mapean automáticamente vía `manifest.json`.
-
----
-
-Licencia: MIT · Hecho para Bonda.
+- Upstream server: [googleanalytics/google-analytics-mcp](https://github.com/googleanalytics/google-analytics-mcp) (Google).
+- This packaging: MIT (see [LICENSE](LICENSE)). Not an official Google product; it only repackages the official server for Claude Desktop.
