@@ -1,3 +1,5 @@
+**English** | [Español](README.es.md)
+
 # ga4-mcp — Google Analytics 4 for Claude
 
 Use your **Google Analytics 4** data from **Claude** in plain language.

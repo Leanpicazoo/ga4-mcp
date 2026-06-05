@@ -3,7 +3,7 @@
   "name": "ga4-mcp",
   "display_name": "Google Analytics 4 (Official)",
   "version": "1.0.0",
-  "description": "Connect your Google Analytics 4 data to Claude. Packages the official Google Analytics MCP server (read-only). REQUIRES Python 3.10+ and pipx installed on your machine — see the repo README for setup.",
+  "description": "Connect your Google Analytics 4 data to Claude (read-only). Packages the official Google Analytics MCP server. REQUIRES Python 3.10+ and pipx on your machine — see README. | [ES] Conectá tu Google Analytics 4 a Claude (solo lectura). Empaqueta el MCP oficial de Google. REQUIERE Python 3.10+ y pipx — ver README.",
   "long_description": "This is a Claude Desktop extension that runs the official Google Analytics MCP server (github.com/googleanalytics/google-analytics-mcp, PyPI package 'analytics-mcp'), maintained by the Google Analytics team. It gives Claude read-only access to your GA4 accounts and properties via the Analytics Admin & Data APIs: account/property discovery, core reports, funnel reports, realtime reports, and custom dimensions/metrics.\n\nPREREQUISITES (the extension cannot bundle these): (1) Python 3.10 or newer, (2) pipx on your PATH, (3) the Google Analytics Admin API and Data API enabled in a Google Cloud project, and (4) credentials with the analytics.readonly scope — either a Service Account JSON key (simplest) or user credentials from `gcloud auth application-default login`. Fill in the path to that credentials file and your Google Cloud Project ID below. Full step-by-step setup is in the README: https://github.com/Leanpicazoo/ga4-mcp",
   "author": {
     "name": "Leanpicazoo",
@@ -32,10 +32,12 @@
     { "name": "get_account_summaries", "description": "List the user's Google Analytics accounts and properties." },
     { "name": "get_property_details", "description": "Return details about a specific GA4 property." },
     { "name": "list_google_ads_links", "description": "List Google Ads account links for a property." },
-    { "name": "run_report", "description": "Run a core GA4 report (Data API): metrics, dimensions, date ranges, filters." },
-    { "name": "run_funnel_report", "description": "Run a GA4 funnel report (Data API)." },
+    { "name": "list_property_annotations", "description": "List annotations configured for a property." },
     { "name": "get_custom_dimensions_and_metrics", "description": "List the custom dimensions and metrics configured for a property." },
-    { "name": "run_realtime_report", "description": "Run a GA4 realtime report (last 30 minutes)." }
+    { "name": "run_report", "description": "Run a core GA4 report (Data API): metrics, dimensions, date ranges, filters." },
+    { "name": "run_realtime_report", "description": "Run a GA4 realtime report (last 30 minutes)." },
+    { "name": "run_funnel_report", "description": "Run a GA4 funnel report (Data API)." },
+    { "name": "run_conversions_report", "description": "Run a GA4 conversions report (Data API)." }
   ],
   "keywords": [
     "google-analytics",
