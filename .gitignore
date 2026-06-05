@@ -1,0 +1,12 @@
+node_modules/
+build/
+*.mcpb
+*.log
+
+# Credenciales — NUNCA commitear
+*.json.key
+service-account*.json
+gcp-*.json
+.env
+.env.local
+.DS_Store

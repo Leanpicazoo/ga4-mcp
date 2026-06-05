@@ -1,0 +1,103 @@
+{
+  "manifest_version": "0.3",
+  "name": "bonda-ga4-mcp",
+  "display_name": "Bonda Google Analytics 4",
+  "version": "1.0.0",
+  "description": "Acceso a datos de Google Analytics 4 (GA4) de Bonda desde Claude, con soporte multi-property y dimensiones custom (tenant, item_name, hostname).",
+  "long_description": "Servidor MCP que conecta las properties de Google Analytics 4 de Bonda a Claude. Permite consultar usuarios activos, vistas de página, eventos de negocio (canjes de cupones/vouchers) y reportes personalizados en lenguaje natural, con dimensiones custom de Bonda (tenant, user_segmentation, item_name) y notas de arquitectura para cruzar datos con Metabase. Autenticación vía Service Account de Google (solo lectura).",
+  "author": {
+    "name": "Bonda",
+    "url": "https://bonda.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bonda/bonda-ga4-mcp"
+  },
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "build/src/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/build/src/index.js"
+      ],
+      "env": {
+        "GA4_PROPERTY_ID": "${user_config.ga4_property_id}",
+        "GOOGLE_APPLICATION_CREDENTIALS": "${user_config.google_credentials_file}",
+        "GA4_CLIENT_EMAIL": "${user_config.ga4_client_email}",
+        "GA4_PRIVATE_KEY": "${user_config.ga4_private_key}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "get_active_users",
+      "description": "Usuarios activos, nuevos y totales en un rango de fechas, con desglose opcional por dimensión."
+    },
+    {
+      "name": "get_page_views",
+      "description": "Vistas de página (screenPageViews) y top de páginas más visitadas en un rango de fechas."
+    },
+    {
+      "name": "run_ga4_report",
+      "description": "Reporte GA4 personalizado: cualquier combinación de métricas, dimensiones, filtros y orden."
+    },
+    {
+      "name": "run_ga4_realtime",
+      "description": "Datos en tiempo real de GA4 (últimos 30 minutos)."
+    },
+    {
+      "name": "get_ga4_metrics_reference",
+      "description": "Referencia de métricas, dimensiones y dimensiones custom de Bonda, con notas de cruce GA4 <-> Metabase."
+    }
+  ],
+  "keywords": [
+    "google-analytics",
+    "ga4",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "claude",
+    "analytics",
+    "bonda"
+  ],
+  "license": "MIT",
+  "user_config": {
+    "ga4_property_id": {
+      "type": "string",
+      "title": "GA4 Property ID (por defecto)",
+      "description": "ID numérico del property GA4 que se usa cuando no se especifica otro. Bonda: 325524662 (PWA Micrositios), 407434664 (admin.bonda.com), 442187277 (copa.futbol), 402547458 (bonda.com).",
+      "required": true,
+      "default": "325524662"
+    },
+    "google_credentials_file": {
+      "type": "file",
+      "title": "Archivo JSON del Service Account (recomendado)",
+      "description": "Seleccioná el archivo .json de la clave del Service Account de Google con acceso de lectura (Viewer) a la(s) property(ies) de GA4. Es la forma recomendada de autenticar.",
+      "required": false
+    },
+    "ga4_client_email": {
+      "type": "string",
+      "title": "Service Account — client_email (alternativa)",
+      "description": "Email del Service Account. Solo es necesario si NO usás el archivo JSON. Ej: bonda-ga4-mcp@proyecto.iam.gserviceaccount.com",
+      "required": false,
+      "default": ""
+    },
+    "ga4_private_key": {
+      "type": "string",
+      "title": "Service Account — private_key (alternativa)",
+      "description": "Clave privada del Service Account (el valor de private_key del JSON, incluyendo -----BEGIN/END PRIVATE KEY-----). Solo necesaria si NO usás el archivo JSON.",
+      "required": false,
+      "sensitive": true,
+      "default": ""
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.11.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}
